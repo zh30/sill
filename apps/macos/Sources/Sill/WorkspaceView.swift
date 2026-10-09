@@ -173,19 +173,20 @@ struct ModePicker: View {
 struct TranscriptView: View {
     @ObservedObject var pane: Pane
     /// Auto-follow only while the user is already at the bottom — a scroll
-    /// up to read history must never get yanked back by new events.
-    @State private var atBottom = true
-
-    private static let minuteFmt: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f
-    }()
+    /// up to read history must never get yanked back by new events. Starts
+    /// false: the sentinel hasn't appeared yet on a fresh open, so an
+    /// optimistic default would yank the reader to the tail on the next
+    /// event. The on-open scroll below turns it on for real.
+    @State private var atBottom = false
 
     /// Timestamps print only when the minute changes — a stream of events
     /// inside one minute doesn't need the same label repeated 40 times.
+    /// `equalTo: .minute` compares the full calendar minute (day included),
+    /// so a same-clock-time event tomorrow still gets its own label.
     private func showsTime(at index: Int) -> Bool {
         guard index > 0 else { return true }
         let prev = pane.transcript[index - 1]
-        return Self.minuteFmt.string(from: prev.ts) != Self.minuteFmt.string(from: pane.transcript[index].ts)
+        return !Calendar.current.isDate(prev.ts, equalTo: pane.transcript[index].ts, toGranularity: .minute)
     }
 
     var body: some View {
@@ -212,7 +213,14 @@ struct TranscriptView: View {
                     }
                 }
                 .background(T.bg)
-                .onChange(of: pane.transcript.count) { _, _ in
+                // Transcripts open on the tail, matching how every terminal
+                // surfaces new output. The sentinel appearing flips atBottom
+                // on — then real events follow-scroll from there.
+                .onAppear { proxy.scrollTo("transcript-bottom") }
+                // Watch the last event's id, not the count: once the 2,000
+                // cap drops oldest rows the count stops changing while new
+                // events keep arriving.
+                .onChange(of: pane.transcript.last?.id) { _, _ in
                     guard atBottom else { return }
                     withAnimation(nil) { proxy.scrollTo("transcript-bottom") }
                 }
