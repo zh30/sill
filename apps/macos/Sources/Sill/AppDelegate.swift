@@ -20,6 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.title = "Sill"
+        // Dark-first chrome: sheets, alerts, menus and the title bar inherit
+        // the app appearance, not the system one.
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = NSColor(calibratedRed: 0x0C / 255.0, green: 0x0C / 255.0, blue: 0x0E / 255.0, alpha: 1)
+        window.titlebarSeparatorStyle = .none
         window.center()
         window.contentView = NSHostingView(rootView: ContentView(appState: appState))
         window.makeKeyAndOrderFront(nil)

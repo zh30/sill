@@ -50,14 +50,25 @@ struct PaletteView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TextField("Command…", text: $query)
-                .textFieldStyle(.plain)
-                .font(.system(size: 14))
-                .padding(10)
-            Divider()
+            HStack(spacing: 8) {
+                Text("⌘").font(T.mono(13)).foregroundStyle(T.faint)
+                TextField("jump to command…", text: $query)
+                    .textFieldStyle(.plain)
+                    .font(T.ui(13))
+                    .foregroundStyle(T.fg)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            Divider().overlay(T.borderSoft)
             List(filtered) { cmd in
                 Text(cmd.title)
+                    .font(T.ui(12))
+                    .foregroundStyle(T.fg.opacity(0.9))
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 3)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 14, bottom: 2, trailing: 14))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         dismiss()
@@ -65,11 +76,13 @@ struct PaletteView: View {
                     }
             }
             .listStyle(.plain)
-            .frame(height: min(CGFloat(filtered.count) * 28, 260))
+            .scrollContentBackground(.hidden)
+            .frame(height: min(CGFloat(filtered.count) * 30, 280))
         }
-        .frame(width: 380)
-        .background(.ultraThinMaterial)
-        .cornerRadius(8)
+        .frame(width: 400)
+        .background(T.surface)
+        .overlay(RoundedRectangle(cornerRadius: T.radiusMd).stroke(T.border, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: T.radiusMd))
     }
 }
 

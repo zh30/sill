@@ -48,8 +48,12 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
         tv.processDelegate = self
         tv.font = Self.terminalFont()
         tv.optionAsMetaKey = true
-        tv.nativeForegroundColor = NSColor.textColor
-        tv.nativeBackgroundColor = NSColor.textBackgroundColor
+        // Void theme pack terminal layer — explicit, not system-derived
+        // (the view can mount before the dark appearance applies).
+        tv.nativeForegroundColor = Self.ansi(0xE8E8EA)
+        tv.nativeBackgroundColor = Self.ansi(0x0C0C0E)
+        tv.caretColor = Self.ansi(0xF2F2F7)
+        tv.selectedTextBackgroundColor = Self.ansi(0x2C3E50)
         tv.onBufferActivated = { [weak pane] alt in
             Task { @MainActor in
                 pane?.altScreen = alt
@@ -64,6 +68,13 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
     private static func terminalFont() -> NSFont {
         NSFont(name: "JetBrains Mono", size: 13)
             ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    }
+
+    private static func ansi(_ hex: UInt32) -> NSColor {
+        NSColor(calibratedRed: CGFloat((hex >> 16) & 0xFF) / 255,
+                green: CGFloat((hex >> 8) & 0xFF) / 255,
+                blue: CGFloat(hex & 0xFF) / 255,
+                alpha: 1)
     }
 
     func spawn() throws {

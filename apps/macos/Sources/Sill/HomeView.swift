@@ -8,35 +8,43 @@ struct HomeView: View {
     @ObservedObject var appState: AppState
 
     var body: some View {
-        VStack(spacing: 32) {
-            VStack(spacing: 8) {
-                Text("Sill")
-                    .font(.system(size: 28, weight: .semibold))
-                Text("The attention surface for agents")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.top, 48)
+        VStack(spacing: 0) {
+            Spacer()
 
-            HStack(spacing: 16) {
+            VStack(spacing: 10) {
+                Text("sill")
+                    .font(T.mono(34, .medium))
+                    .foregroundStyle(T.fg)
+                Text("the attention surface for agents")
+                    .font(T.ui(13))
+                    .foregroundStyle(T.subtle)
+            }
+            .padding(.bottom, 40)
+
+            HStack(spacing: 14) {
                 HomeCard(
                     title: "New Agent Session",
                     subtitle: "claude · codex · grok — detected on PATH",
+                    glyph: "◐",
                     primary: true,
                     action: { appState.showNewSession = true }
                 )
                 HomeCard(
                     title: "Plain Terminal",
-                    subtitle: "shell in any directory",
+                    subtitle: "login shell in any directory",
+                    glyph: "▣",
                     primary: false,
                     action: { newPlainTerminal() }
                 )
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 48)
+            .frame(maxWidth: 720)
 
             Spacer()
+            Spacer().frame(height: 60)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(T.bg)
     }
 
     private func newPlainTerminal() {
@@ -52,29 +60,35 @@ struct HomeView: View {
 struct HomeCard: View {
     let title: String
     let subtitle: String
+    let glyph: String
     let primary: Bool
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.system(size: 15, weight: .medium))
-                Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                Text(glyph)
+                    .font(T.ui(18, .medium))
+                    .foregroundStyle(primary ? T.accent : T.subtle)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(T.ui(14, .medium))
+                        .foregroundStyle(T.fg)
+                    Text(subtitle)
+                        .font(T.ui(11))
+                        .foregroundStyle(T.subtle)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(hovering
-                          ? Color(nsColor: .controlColor)
-                          : Color(nsColor: .windowBackgroundColor))
-            )
+            .padding(16)
+            .background(hovering ? T.rowHover : T.surface)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(primary ? Color.accentColor : Color(nsColor: .separatorColor),
-                            lineWidth: primary ? 1.5 : 1)
+                RoundedRectangle(cornerRadius: T.radiusMd)
+                    .stroke(primary ? T.accent.opacity(0.55) : T.border, lineWidth: 1)
             )
+            .clipShape(RoundedRectangle(cornerRadius: T.radiusMd))
+            .animation(.easeOut(duration: 0.12), value: hovering)
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }

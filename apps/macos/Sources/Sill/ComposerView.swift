@@ -10,27 +10,34 @@ struct ComposerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider()
-            ComposerTextView(
-                text: $pane.composerDraft,
-                pane: pane,
-                onSend: { send() },
-                onEscape: { pane.surface?.focusPty() }
-            )
-            .frame(minHeight: 72, maxHeight: 160)
+            Divider().overlay(T.borderSoft)
+            VStack(spacing: 0) {
+                ComposerTextView(
+                    text: $pane.composerDraft,
+                    pane: pane,
+                    onSend: { send() },
+                    onEscape: { pane.surface?.focusPty() }
+                )
+                .frame(minHeight: 64, maxHeight: 140)
+            }
+            .padding(.horizontal, 4)
+            .background(T.surface)
             HStack {
                 Text("⏎ newline · ⌘⏎ send · esc → terminal")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                    .font(T.ui(10))
+                    .foregroundStyle(T.faint)
                 Spacer()
                 Button("Send") { send() }
                     .keyboardShortcut(.return, modifiers: .command)
-                    .controlSize(.small)
+                    .buttonStyle(SillButtonStyle(primary: pane.status.isBlocked))
+                    .disabled(pane.composerDraft.isEmpty)
+                    .opacity(pane.composerDraft.isEmpty ? 0.5 : 1)
             }
             .padding(.horizontal, 12)
-            .padding(.bottom, 8)
+            .padding(.vertical, 7)
+            .background(T.surface)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(T.bg)
         .alert("Text contains control characters", isPresented: $confirmSend) {
             Button("Send anyway") { reallySend() }
             Button("Cancel", role: .cancel) {}

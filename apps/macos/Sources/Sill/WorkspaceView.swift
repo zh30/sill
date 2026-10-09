@@ -10,7 +10,7 @@ struct WorkspaceView: View {
         HStack(spacing: 0) {
             if !appState.terminalMode {
                 RailView(appState: appState)
-                Divider()
+                Divider().overlay(T.borderSoft)
             }
             if let pane = appState.focused {
                 // .id forces a fresh view tree per pane — without it SwiftUI
@@ -19,11 +19,21 @@ struct WorkspaceView: View {
                 PaneContainer(pane: pane, appState: appState)
                     .id(pane.id)
             } else {
-                ContentUnavailableView("No session focused",
-                                       systemImage: "terminal",
-                                       description: Text("⌘N for a new session"))
+                VStack(spacing: 8) {
+                    Image(systemName: "terminal")
+                        .font(T.ui(28))
+                        .foregroundStyle(T.faint)
+                    Text("No session focused")
+                        .font(T.ui(13, .medium))
+                        .foregroundStyle(T.subtle)
+                    Text("⌘N for a new session")
+                        .font(T.ui(11))
+                        .foregroundStyle(T.faint)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .background(T.bg)
     }
 }
 
@@ -34,7 +44,7 @@ struct PaneContainer: View {
     var body: some View {
         VStack(spacing: 0) {
             titleStrip
-            Divider()
+            Divider().overlay(T.borderSoft)
             surfaceBody
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if !appState.terminalMode {
@@ -44,7 +54,7 @@ struct PaneContainer: View {
         // V2: the ring wraps a blocked surface — 2px, static, no pulse loop.
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.accentColor, lineWidth: pane.status.isBlocked ? 2 : 0)
+                .stroke(T.accent, lineWidth: pane.status.isBlocked ? 2 : 0)
                 .animation(.easeOut(duration: 0.12), value: pane.status.isBlocked)
                 .allowsHitTesting(false)
         )
@@ -67,31 +77,44 @@ struct PaneContainer: View {
     }
 
     private var titleStrip: some View {
-        HStack(spacing: 8) {
-            Text(pane.title).font(.system(size: 12, weight: .medium))
-            Text(pane.cwd.path).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+        HStack(spacing: 10) {
+            GlyphTile(agent: pane.agent, size: 20)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(pane.title)
+                    .font(T.ui(12, .medium))
+                    .foregroundStyle(T.fg)
+                    .lineLimit(1)
+            }
+            Text(pane.cwd.path)
+                .font(T.mono(10))
+                .foregroundStyle(T.faint)
+                .lineLimit(1)
+                .truncationMode(.middle)
             Spacer()
             if pane.altScreen {
-                Text("TUI — raw locked").font(.system(size: 10)).foregroundStyle(.tertiary)
+                Text("TUI — raw locked")
+                    .font(T.ui(10))
+                    .foregroundStyle(T.subtle)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(T.rowHover)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
             }
-            Picker("", selection: $pane.viewMode) {
-                Text("Raw").tag(ViewMode.raw)
-                Text("Transcript").tag(ViewMode.transcript)
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 170)
-            .disabled(pane.altScreen) // alt-screen locks the toggle (FR-006)
+            ModePicker(mode: $pane.viewMode, locked: pane.altScreen)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(height: T.stripHeight)
+        .background(T.surface)
     }
 
     private func errorStrip(_ msg: String) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 24)).foregroundStyle(.secondary)
-            Text(msg).font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(T.ui(22, .light))
+                .foregroundStyle(T.faint)
+            Text(msg)
+                .font(T.mono(11))
+                .foregroundStyle(T.subtle)
             Button("Retry") {
                 pane.spawnError = nil
                 pane.exited = false
@@ -99,8 +122,42 @@ struct PaneContainer: View {
                 pane.surface = SwiftTermSurface(pane: pane, appState: appState)
                 try? pane.surface?.spawn()
             }
+            .buttonStyle(SillButtonStyle(primary: true))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(T.bg)
+    }
+}
+
+/// Raw / Transcript segmented control — a bordered capsule pair, not the
+/// system segmented style (which drags in light-chrome assumptions).
+struct ModePicker: View {
+    @Binding var mode: ViewMode
+    let locked: Bool
+
+    var body: some View {
+        HStack(spacing: 0) {
+            segment(.raw, "Raw")
+            segment(.transcript, "Transcript")
+        }
+        .background(T.raised)
+        .overlay(RoundedRectangle(cornerRadius: T.radiusSm).stroke(T.border, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: T.radiusSm))
+        .opacity(locked ? 0.45 : 1)
+        .disabled(locked) // alt-screen locks the toggle (FR-006)
+        .help(locked ? "Alt-screen TUI forces Raw" : "Switch surface")
+    }
+
+    private func segment(_ m: ViewMode, _ label: String) -> some View {
+        Button { mode = m } label: {
+            Text(label)
+                .font(T.ui(11, mode == m ? .medium : .regular))
+                .foregroundStyle(mode == m ? T.fg : T.subtle)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .background(mode == m ? T.rowHover : .clear)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -113,26 +170,65 @@ struct TranscriptView: View {
         if pane.transcript.isEmpty {
             VStack(spacing: 8) {
                 Text("No structured events yet")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(T.ui(13, .medium))
+                    .foregroundStyle(T.subtle)
                 Text("This view fills from OSC 7501/133 and hook events.\nSwitch to Raw for the live terminal.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .font(T.ui(11))
+                    .foregroundStyle(T.faint)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(T.bg)
         } else {
-            List(pane.transcript.reversed()) { ev in
-                HStack(alignment: .top, spacing: 8) {
-                    Text(ev.ts, style: .time)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                        .frame(width: 70, alignment: .leading)
-                    Text(ev.text)
-                        .font(.system(size: 12))
-                        .textSelection(.enabled)
+            ScrollViewReader { proxy in
+                List(pane.transcript) { ev in
+                    TranscriptRow(ev: ev)
+                        .listRowInsets(EdgeInsets(top: 3, leading: 14, bottom: 3, trailing: 14))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .id(ev.id)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(T.bg)
+                .onChange(of: pane.transcript.count) { _, _ in
+                    if let last = pane.transcript.last { proxy.scrollTo(last.id) }
                 }
             }
-            .listStyle(.plain)
+        }
+    }
+}
+
+struct TranscriptRow: View {
+    let ev: Pane.TranscriptEvent
+
+    private var kindLabel: String {
+        switch ev.kind {
+        case .status: return "status"
+        case .command: return "command"
+        case .cwd: return "cwd"
+        case .notify: return "notify"
+        case .progress: return "progress"
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(ev.ts, style: .time)
+                .font(T.mono(10))
+                .foregroundStyle(T.faint)
+                .frame(width: 62, alignment: .leading)
+            Text(kindLabel)
+                .font(T.mono(9))
+                .foregroundStyle(T.subtle)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .overlay(RoundedRectangle(cornerRadius: 3).stroke(T.border, lineWidth: 1))
+                .frame(width: 64, alignment: .leading)
+            Text(ev.text)
+                .font(T.mono(11))
+                .foregroundStyle(T.fg.opacity(0.85))
+                .textSelection(.enabled)
         }
     }
 }

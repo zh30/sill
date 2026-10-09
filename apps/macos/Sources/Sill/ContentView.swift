@@ -13,6 +13,8 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 720, minHeight: 480)
+        .background(T.bg)
+        .preferredColorScheme(.dark)
         .sheet(isPresented: $appState.showNewSession) {
             NewSessionView(appState: appState)
         }
