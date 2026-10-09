@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sill v1 — lo-fi wireframe</title>
+<style>
+  /* Lo-fi only: black / white / gray. No color decisions here. */
+  * { box-sizing: border-box; margin: 0; font: 13px/1.45 -apple-system, "SF Mono", monospace; color: #111; }
+  body { background: #eee; padding: 24px; }
+  .screen { background: #fff; border: 1px solid #999; margin: 0 auto 28px; max-width: 960px; position: relative; }
+  .bar { border-bottom: 1px solid #bbb; padding: 6px 12px; background: #f4f4f4; font-size: 11px; color: #555; }
+  .cap { font-size: 11px; color: #555; padding: 6px 12px; border-top: 1px dashed #bbb; background: #fafafa; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .pad { padding: 12px; }
+  .card { border: 1px solid #888; padding: 14px; background: #fafafa; }
+  .card b { display: block; margin-bottom: 4px; }
+  .btn { border: 1px solid #444; background: #fff; padding: 4px 10px; font-size: 12px; }
+  .btn.primary { background: #111; color: #fff; }
+  .btn.ghost { border-style: dashed; color: #555; }
+  .input { border: 1px solid #999; background: #fff; min-height: 28px; padding: 6px 8px; }
+  .input.dim { color: #888; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #666; padding: 10px 12px 4px; }
+  .rail { width: 200px; border-right: 1px solid #bbb; background: #f7f7f7; flex-shrink: 0; }
+  .rail .r { display: flex; gap: 8px; align-items: flex-start; padding: 7px 10px; border-bottom: 1px solid #e4e4e4; }
+  .rail .r.sel { background: #e2e2e2; }
+  .rail .g { width: 12px; text-align: center; flex-shrink: 0; }
+  .rail .t { font-size: 12px; }
+  .rail .s { font-size: 10px; color: #777; }
+  .mark { width: 10px; height: 10px; border: 2px solid #111; border-radius: 50%; flex-shrink: 0; margin-left: auto; }
+  .mark.dot { border: none; background: #111; width: 6px; height: 6px; }
+  .mark.hollow { border-width: 1px; width: 7px; height: 7px; border-color: #999; }
+  .mark.warn { border: none; font-size: 10px; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .titlestrip { border-bottom: 1px solid #bbb; padding: 6px 12px; display: flex; gap: 10px; align-items: center; font-size: 12px; }
+  .seg { display: inline-flex; border: 1px solid #888; }
+  .seg span { padding: 2px 10px; font-size: 11px; }
+  .seg .on { background: #111; color: #fff; }
+  .term { flex: 1; background: #f3f3f3; padding: 12px; font-family: monospace; font-size: 12px; white-space: pre; }
+  .ring { outline: 2px solid #111; outline-offset: -2px; }
+  .composer { border-top: 1px solid #bbb; }
+  .hint { font-size: 10px; color: #888; padding: 4px 12px 8px; }
+  .empty { flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; color: #777; padding: 40px; }
+  .strip { display: flex; }
+  .note { font-size: 10px; color: #666; }
+  .state { font-size: 10px; border: 1px solid #999; padding: 1px 6px; color: #555; }
+  .grid2 { display: flex; gap: 16px; padding: 24px; }
+  .grid2 .card { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- Screens in real usage order: J1 home → new session → workspace → states. -->
+
+<div class="screen">
+  <div class="bar">1 · Home Canvas (first launch / all panes closed)</div>
+  <div class="pad" style="text-align:center; padding-top:32px;">
+    <div style="font-size:20px; font-weight:600;">Sill</div>
+    <div style="color:#777; font-size:11px; margin-top:4px;">the attention surface for agents</div>
+  </div>
+  <div class="grid2">
+    <div class="card"><b>New Agent Session</b><span class="note">claude · codex · grok — PATH detected; else Custom Command. → opens sheet (2)</span></div>
+    <div class="card"><b>Plain Terminal</b><span class="note">login shell in home dir → workspace (3)</span></div>
+  </div>
+  <div class="cap">Empty state = home. No account, no theme picker, no network on home.</div>
+</div>
+
+<div class="screen">
+  <div class="bar">2 · New Session sheet (⌘N or home card)</div>
+  <div class="pad">
+    <div class="row" style="margin-bottom:10px;"><b>Provider</b><span class="note">row per detected CLI; dimmed + "not on PATH" when missing</span></div>
+    <div class="card" style="margin-bottom:8px;"><b>◐ Claude</b> <span class="note">anthropic — detected</span></div>
+    <div class="card" style="margin-bottom:8px; opacity:.5;"><b>◆ Codex</b> <span class="note">openai — not on PATH</span></div>
+    <div class="card" style="margin-bottom:14px;"><b>▲ Grok</b> <span class="note">xai — detected</span></div>
+    <div class="row" style="margin-bottom:6px;"><span>Directory</span><div class="input dim" style="flex:1;">~</div></div>
+    <div class="row" style="margin-bottom:14px;"><span>Custom command</span><div class="input dim" style="flex:1;">executable + args…</div></div>
+    <div class="row" style="justify-content:flex-end;"><span class="btn ghost">Cancel</span>&nbsp;<span class="btn primary">Launch</span></div>
+  </div>
+  <div class="cap">Launch → workspace with agent argv + SILL_PANE env. Launch failure → pane error strip (7), never silent.</div>
+</div>
+
+<div class="screen">
+  <div class="bar">3 · Workspace (the default, steady state)</div>
+  <div class="strip" style="height:300px;">
+    <div class="rail">
+      <h2>Sessions</h2>
+      <div class="r sel"><span class="g">◐</span><div><div class="t">claude: fix tests</div><div class="s">~/repos/app · awaiting</div></div><span class="mark"></span></div>
+      <div class="r"><span class="g">◆</span><div><div class="t">codex: refactor</div><div class="s">~/work · done</div></div><span class="mark dot"></span></div>
+      <div class="r"><span class="g">▣</span><div><div class="t">Terminal</div><div class="s">~/devin · working</div></div><span class="mark hollow"></span></div>
+    </div>
+    <div class="main">
+      <div class="titlestrip"><b>claude: fix tests</b><span class="note" style="overflow:hidden; text-overflow:ellipsis;">~/repos/app</span><span style="margin-left:auto" class="seg"><span class="on">Raw</span><span>Transcript</span></span></div>
+      <div class="term ring">dev@ip ~ % claude
+&gt; tests failing in auth.spec.ts — fix?</div>
+      <div class="composer">
+        <div class="input" style="min-height:56px; border-width:0 0 1px;">Yes — fix the failing cases, keep the public API.</div>
+        <div class="hint">⏎ newline · ⌘⏎ send (bracketed paste) · esc → terminal<span style="float:right"><span class="btn">Send</span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">Blocked pane = 2px ring around surface + ring marker on rail + unread. ⌘' jumps to oldest blocked and focuses composer. ⌘1–9 focus panes.</div>
+</div>
+
+<div class="screen">
+  <div class="bar">4 · Transcript view (same pane, toggle)</div>
+  <div class="titlestrip"><b>claude: fix tests</b><span class="note">~/repos/app</span><span style="margin-left:auto" class="seg"><span>Raw</span><span class="on">Transcript</span></span></div>
+  <div class="pad" style="font-size:12px;">
+    <div class="row"><span class="state">status</span><span>awaiting · permission · claude — 12:41</span></div>
+    <div class="row" style="margin-top:6px;"><span class="state">command</span><span>composer → pty (47 chars) — 12:42</span></div>
+    <div class="row" style="margin-top:6px;"><span class="state">cwd</span><span>/Users/devin/repos/app — 12:42</span></div>
+    <div class="row" style="margin-top:6px;"><span class="state">notify</span><span>"tests green" — 12:44</span></div>
+  </div>
+  <div class="cap">Chronological event list only. No bubbles, no rewriting TUI output. No events → honest empty state, never fabricated.</div>
+</div>
+
+<div class="screen">
+  <div class="bar">5 · Alt-screen lock (agent TUI / nvim running)</div>
+  <div class="titlestrip"><b>claude: fix tests</b><span class="note">~/repos/app</span><span class="state">TUI — raw locked</span><span style="margin-left:auto" class="seg" style="opacity:.5"><span class="on">Raw</span><span>Transcript</span></span></div>
+  <div class="term">┌ claude ──────────────┐
+│ interactive TUI      │</div>
+  <div class="cap">Alt-screen detected → Raw forced, toggle disabled (tooltip explains). Composer still sends; it's a paste, not an overlay.</div>
+</div>
+
+<div class="screen">
+  <div class="bar">6 · States — empty transcript, spawn error, dead pane</div>
+  <div class="pad" style="display:flex; gap:16px;">
+    <div class="card" style="flex:1"><b>Empty transcript</b><span class="note">"No events yet — the pane hasn't emitted marks or status." No fake content.</span></div>
+    <div class="card" style="flex:1"><b>Spawn error</b><span class="note">⚠ "claude: executable not found" + Retry. Session id kept.</span></div>
+    <div class="card" style="flex:1"><b>Process exited</b><span class="note">scrollback stays readable; error strip "process exited (0)" + Retry respawns.</span></div>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="bar">7 · Command Palette (⌘⇧P)</div>
+  <div class="pad">
+    <div class="input" style="margin-bottom:8px;">jump to…</div>
+    <div class="card" style="margin-bottom:6px;"><b>Jump to unread blocked</b><span class="note">⌘'</span></div>
+    <div class="card" style="margin-bottom:6px;"><b>New session</b><span class="note">⌘N</span></div>
+    <div class="card"><b>Toggle terminal mode</b><span class="note">hides rail+composer — pure terminal</span></div>
+  </div>
+  <div class="cap">Palette = jump list for rail items + app actions. No settings page.</div>
+</div>
+
+<div class="screen">
+  <div class="bar">8 · Collapsed rail (48px)</div>
+  <div class="strip" style="height:120px;">
+    <div class="rail" style="width:48px;">
+      <div class="r" style="justify-content:center;"><span class="g">◐</span></div>
+      <div class="r" style="justify-content:center;"><span class="g">◆</span><span class="mark" style="margin-left:0;"></span></div>
+    </div>
+    <div class="main"><div class="term">…</div></div>
+  </div>
+  <div class="cap">Collapsed keeps provider glyph + blocked ring marker. Reorder survives via drag.</div>
+</div>
+
+</body>
+</html>
