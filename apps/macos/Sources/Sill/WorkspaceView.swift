@@ -92,6 +92,15 @@ struct PaneContainer: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             }
             ModePicker(mode: $pane.viewMode, locked: pane.altScreen)
+            Button { appState.closePane(pane) } label: {
+                Image(systemName: "xmark")
+                    .font(T.ui(9, .medium))
+                    .foregroundStyle(T.faint)
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Close pane (⌘W)")
         }
         .padding(.horizontal, 12)
         .frame(height: T.stripHeight)

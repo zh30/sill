@@ -38,9 +38,11 @@ struct RailView: View {
             List {
                 ForEach(Array(appState.panes.enumerated()), id: \.element.id) { index, pane in
                     RailRow(pane: pane,
+                            appState: appState,
                             collapsed: appState.railCollapsed,
                             selected: appState.focusedId == pane.id,
-                            index: index)
+                            index: index,
+                            onRename: rename)
                         .listRowInsets(EdgeInsets(top: 1, leading: 6, bottom: 1, trailing: 6))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -102,9 +104,11 @@ struct RailView: View {
 
 struct RailRow: View {
     @ObservedObject var pane: Pane
+    @ObservedObject var appState: AppState
     let collapsed: Bool
     let selected: Bool
     let index: Int
+    let onRename: (Pane) -> Void
     @State private var hovering = false
 
     var body: some View {
@@ -123,7 +127,19 @@ struct RailRow: View {
                 }
                 Spacer(minLength: 4)
             }
-            StatusMark(pane: pane)
+            if hovering && !collapsed {
+                Button { appState.closePane(pane) } label: {
+                    Image(systemName: "xmark")
+                        .font(T.ui(8, .semibold))
+                        .foregroundStyle(T.faint)
+                        .frame(width: 16, height: 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Close pane (⌘W)")
+            } else {
+                StatusMark(pane: pane)
+            }
         }
         .frame(height: collapsed ? 44 : 46)
         .padding(.horizontal, collapsed ? 0 : 8)
@@ -131,6 +147,15 @@ struct RailRow: View {
         .clipShape(RoundedRectangle(cornerRadius: T.radiusSm))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
+        .contextMenu {
+            Button("Focus") {
+                appState.focusedId = pane.id
+                pane.unread = false
+            }
+            Button("Rename…") { onRename(pane) }
+            Divider()
+            Button("Close Pane") { appState.closePane(pane) }
+        }
         .accessibilityLabel("\(pane.title), \(pane.status.railLabel)")
         .help(collapsed ? "\(pane.title) — \(pane.status.railLabel)" : "")
     }

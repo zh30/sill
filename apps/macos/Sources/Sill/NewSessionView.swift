@@ -10,6 +10,7 @@ struct NewSessionView: View {
     @State private var customCommand = ""
     @State private var directory: URL = FileManager.default.homeDirectoryForCurrentUser
     @State private var launchError: String?
+    @FocusState private var customFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -27,6 +28,7 @@ struct NewSessionView: View {
                         .textFieldStyle(.plain)
                         .font(T.mono(12))
                         .foregroundStyle(T.fg)
+                        .focused($customFocused)
                         .onSubmit { if !customCommand.isEmpty { launch(custom: customCommand) } }
                 }
                 .padding(.horizontal, 10)
@@ -62,6 +64,7 @@ struct NewSessionView: View {
         .padding(20)
         .frame(width: 440)
         .background(T.bg)
+        .onAppear { customFocused = true }
     }
 
     private func chooseDirectory() {
@@ -76,7 +79,7 @@ struct NewSessionView: View {
 
     private func launch(provider: Provider) {
         guard provider.available else {
-            launchError = "\(provider.executable) is not on PATH — install \(provider.name) first."
+            launchError = "\(provider.executable) is not on PATH — install with:\n\(provider.installHint)"
             return
         }
         launchError = nil

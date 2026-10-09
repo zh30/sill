@@ -8,16 +8,21 @@ struct Provider: Identifiable {
     let available: Bool
     /// Template argv for a fresh session.
     let launchArgs: [String]
+    /// One-line install hint shown when the executable is missing.
+    let installHint: String
 }
 
 enum Providers {
     static let catalog: [Provider] = [
         Provider(id: "claude", name: "Claude Code", executable: "claude",
-                 available: which("claude"), launchArgs: ["claude"]),
+                 available: which("claude"), launchArgs: ["claude"],
+                 installHint: "npm i -g @anthropic-ai/claude-code"),
         Provider(id: "codex", name: "Codex CLI", executable: "codex",
-                 available: which("codex"), launchArgs: ["codex"]),
+                 available: which("codex"), launchArgs: ["codex"],
+                 installHint: "npm i -g @openai/codex"),
         Provider(id: "grok", name: "Grok CLI", executable: "grok",
-                 available: which("grok"), launchArgs: ["grok"]),
+                 available: which("grok"), launchArgs: ["grok"],
+                 installHint: "npm i -g @vibe/grok-cli"),
     ]
 
     static func which(_ name: String) -> Bool {
