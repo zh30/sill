@@ -76,6 +76,9 @@ struct PaneContainer: View {
                     .foregroundStyle(T.fg)
                     .lineLimit(1)
             }
+            // Title wins spare width but is capped — without a cap a long
+            // title can starve cwd to zero width and its tooltip with it.
+            .frame(maxWidth: 300, alignment: .leading)
             .layoutPriority(1)
             // cwd is the secondary cue — it yields width to the title and
             // truncates from the middle; the full path is on the tooltip.
