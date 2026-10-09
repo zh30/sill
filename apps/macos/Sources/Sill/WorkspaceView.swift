@@ -159,9 +159,26 @@ struct ModePicker: View {
 }
 
 /// Transcript (V3): read-only structured event layer. No events → honest
-/// empty state suggesting Raw — never synthesized bubbles.
+/// empty state suggesting Raw — never synthesized bubbles. LazyVStack over
+/// List: no inherited row chrome to fight, and the bottom sentinel gives
+/// real at-bottom tracking for follow-scroll.
 struct TranscriptView: View {
     @ObservedObject var pane: Pane
+    /// Auto-follow only while the user is already at the bottom — a scroll
+    /// up to read history must never get yanked back by new events.
+    @State private var atBottom = true
+
+    private static let minuteFmt: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f
+    }()
+
+    /// Timestamps print only when the minute changes — a stream of events
+    /// inside one minute doesn't need the same label repeated 40 times.
+    private func showsTime(at index: Int) -> Bool {
+        guard index > 0 else { return true }
+        let prev = pane.transcript[index - 1]
+        return Self.minuteFmt.string(from: prev.ts) != Self.minuteFmt.string(from: pane.transcript[index].ts)
+    }
 
     var body: some View {
         if pane.transcript.isEmpty {
@@ -170,18 +187,26 @@ struct TranscriptView: View {
                        hint: "This view fills from OSC 7501/133 and hook events.\nSwitch to Raw for the live terminal.")
         } else {
             ScrollViewReader { proxy in
-                List(pane.transcript) { ev in
-                    TranscriptRow(ev: ev)
-                        .listRowInsets(EdgeInsets(top: 3, leading: 14, bottom: 3, trailing: 14))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .id(ev.id)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(pane.transcript.enumerated()), id: \.element.id) { index, ev in
+                            TranscriptRow(ev: ev, showTime: showsTime(at: index))
+                                .padding(.horizontal, 14)
+                                .padding(.top, showsTime(at: index) && index > 0 ? 7 : 2)
+                                .padding(.bottom, 2)
+                        }
+                        // Bottom sentinel: presence = the user sees the tail.
+                        Color.clear
+                            .frame(height: 1)
+                            .id("transcript-bottom")
+                            .onAppear { atBottom = true }
+                            .onDisappear { atBottom = false }
+                    }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
                 .background(T.bg)
                 .onChange(of: pane.transcript.count) { _, _ in
-                    if let last = pane.transcript.last { proxy.scrollTo(last.id) }
+                    guard atBottom else { return }
+                    withAnimation(nil) { proxy.scrollTo("transcript-bottom") }
                 }
             }
         }
@@ -190,6 +215,7 @@ struct TranscriptView: View {
 
 struct TranscriptRow: View {
     let ev: Pane.TranscriptEvent
+    var showTime = true
 
     private var kindLabel: String {
         switch ev.kind {
@@ -213,7 +239,7 @@ struct TranscriptRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(ev.ts, style: .time)
+            Text(showTime ? ev.ts.formatted(date: .omitted, time: .shortened) : "")
                 .font(T.mono(10))
                 .foregroundStyle(T.faint)
                 .frame(width: 62, alignment: .leading)
