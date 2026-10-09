@@ -1,0 +1,37 @@
+# Void — Sill dark theme pack (v1 format)
+# Two layers only: [chrome] and [terminal]. No shaders, no blur, no draw callbacks.
+
+name = "Void"
+
+[chrome]
+background = "#111113"
+foreground = "#e8e8ea"
+accent = "#0a84ff"        # focus ring + primary action
+subtle = "#8e8e93"        # subline text, disabled
+rail_background = "#161618"
+rail_row_hover = "#1e1e21"
+separator = "#2c2c2e"
+error = "#ff453a"
+
+[terminal]
+foreground = "#e8e8ea"
+background = "#0c0c0e"
+cursor = "#f2f2f7"
+selection_background = "#2c3e50"
+# 16 ANSI colors
+black = "#1c1c1e"
+red = "#ff453a"
+green = "#32d74b"
+yellow = "#ffd60a"
+blue = "#0a84ff"
+magenta = "#bf5af2"
+cyan = "#64d2ff"
+white = "#f2f2f7"
+bright_black = "#636366"
+bright_red = "#ff6961"
+bright_green = "#4be564"
+bright_yellow = "#ffe14d"
+bright_blue = "#64a8ff"
+bright_magenta = "#cf7df5"
+bright_cyan = "#7ce0ff"
+bright_white = "#ffffff"

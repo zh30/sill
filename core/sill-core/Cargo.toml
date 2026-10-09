@@ -1,0 +1,16 @@
+[package]
+name = "sill-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Sill core: OSC 7501/133/7/8 byte-stream scanner, status store, layout.toml, Ghostty import. C ABI for chrome backends."
+
+[lib]
+name = "sill_core"
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+base64 = "0.22"

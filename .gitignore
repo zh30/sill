@@ -1,0 +1,8 @@
+/target
+**/target
+**/.build
+/dist
+*.app
+.DS_Store
+vendor/libghostty/
+.swiftpm
