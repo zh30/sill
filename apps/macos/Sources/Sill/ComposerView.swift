@@ -12,12 +12,22 @@ struct ComposerView: View {
         VStack(spacing: 0) {
             Divider().overlay(T.borderSoft)
             VStack(spacing: 0) {
-                ComposerTextView(
-                    text: $pane.composerDraft,
-                    pane: pane,
-                    onSend: { send() },
-                    onEscape: { pane.surface?.focusPty() }
-                )
+                ZStack(alignment: .topLeading) {
+                    ComposerTextView(
+                        text: $pane.composerDraft,
+                        pane: pane,
+                        onSend: { send() },
+                        onEscape: { pane.surface?.focusPty() }
+                    )
+                    if pane.composerDraft.isEmpty {
+                        Text("Write to the pane — ⌘⏎ sends as paste")
+                            .font(T.mono(12))
+                            .foregroundStyle(T.faint)
+                            .padding(.leading, 15)
+                            .padding(.top, 9)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .frame(minHeight: 64, maxHeight: 140)
             }
             .padding(.horizontal, 4)

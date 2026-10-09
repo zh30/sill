@@ -19,18 +19,9 @@ struct WorkspaceView: View {
                 PaneContainer(pane: pane, appState: appState)
                     .id(pane.id)
             } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "terminal")
-                        .font(T.ui(28))
-                        .foregroundStyle(T.faint)
-                    Text("No session focused")
-                        .font(T.ui(13, .medium))
-                        .foregroundStyle(T.subtle)
-                    Text("⌘N for a new session")
-                        .font(T.ui(11))
-                        .foregroundStyle(T.faint)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                EmptyState(icon: "terminal",
+                           title: "No session focused",
+                           hint: "⌘N new session · ⌘⇧P commands")
             }
         }
         .background(T.bg)
@@ -108,24 +99,16 @@ struct PaneContainer: View {
     }
 
     private func errorStrip(_ msg: String) -> some View {
-        VStack(spacing: 14) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(T.ui(22, .light))
-                .foregroundStyle(T.faint)
-            Text(msg)
-                .font(T.mono(11))
-                .foregroundStyle(T.subtle)
-            Button("Retry") {
-                pane.spawnError = nil
-                pane.exited = false
-                pane.exitNote = nil
-                pane.surface = SwiftTermSurface(pane: pane, appState: appState)
-                try? pane.surface?.spawn()
-            }
-            .buttonStyle(SillButtonStyle(primary: true))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(T.bg)
+        EmptyState(icon: "exclamationmark.triangle",
+                   title: msg,
+                   hint: pane.exited ? "The process has exited." : nil,
+                   action: ("Retry / Respawn", {
+                       pane.spawnError = nil
+                       pane.exited = false
+                       pane.exitNote = nil
+                       pane.surface = SwiftTermSurface(pane: pane, appState: appState)
+                       try? pane.surface?.spawn()
+                   }))
     }
 }
 
@@ -168,17 +151,9 @@ struct TranscriptView: View {
 
     var body: some View {
         if pane.transcript.isEmpty {
-            VStack(spacing: 8) {
-                Text("No structured events yet")
-                    .font(T.ui(13, .medium))
-                    .foregroundStyle(T.subtle)
-                Text("This view fills from OSC 7501/133 and hook events.\nSwitch to Raw for the live terminal.")
-                    .font(T.ui(11))
-                    .foregroundStyle(T.faint)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(T.bg)
+            EmptyState(icon: "text.alignleft",
+                       title: "No structured events yet",
+                       hint: "This view fills from OSC 7501/133 and hook events.\nSwitch to Raw for the live terminal.")
         } else {
             ScrollViewReader { proxy in
                 List(pane.transcript) { ev in
@@ -212,6 +187,16 @@ struct TranscriptRow: View {
         }
     }
 
+    /// Kind tint: attention-ish events get accent, plumbing stays zinc.
+    private var kindColor: Color {
+        switch ev.kind {
+        case .status, .notify: return T.accent
+        case .command: return T.fg
+        case .progress: return T.subtle
+        case .cwd: return T.faint
+        }
+    }
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(ev.ts, style: .time)
@@ -220,10 +205,10 @@ struct TranscriptRow: View {
                 .frame(width: 62, alignment: .leading)
             Text(kindLabel)
                 .font(T.mono(9))
-                .foregroundStyle(T.subtle)
+                .foregroundStyle(kindColor)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 1)
-                .overlay(RoundedRectangle(cornerRadius: 3).stroke(T.border, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 3).stroke(kindColor.opacity(0.4), lineWidth: 1))
                 .frame(width: 64, alignment: .leading)
             Text(ev.text)
                 .font(T.mono(11))

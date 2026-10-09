@@ -71,6 +71,38 @@ struct GlyphTile: View {
     }
 }
 
+/// Shared empty/error state: faint icon + title + hint (+ optional action).
+struct EmptyState: View {
+    let icon: String
+    let title: String
+    var hint: String? = nil
+    var action: (title: String, run: () -> Void)? = nil
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(T.ui(24, .light))
+                .foregroundStyle(T.faint)
+            Text(title)
+                .font(T.ui(13, .medium))
+                .foregroundStyle(T.subtle)
+            if let hint {
+                Text(hint)
+                    .font(T.ui(11))
+                    .foregroundStyle(T.faint)
+                    .multilineTextAlignment(.center)
+            }
+            if let action {
+                Button(action.title) { action.run() }
+                    .buttonStyle(SillButtonStyle(primary: true))
+                    .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(T.bg)
+    }
+}
+
 /// Flat button: filled accent (primary) or bordered (ghost). No system chrome.
 struct SillButtonStyle: ButtonStyle {
     var primary = false

@@ -8,17 +8,31 @@ struct RailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !appState.railCollapsed {
+            if appState.railCollapsed {
+                collapseButton(expanded: false)
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
+            } else {
                 HStack {
                     Text("SESSIONS")
                         .font(T.ui(10, .semibold))
                         .foregroundStyle(T.faint)
                         .tracking(1.2)
                     Spacer()
+                    collapseButton(expanded: true)
                 }
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
+            }
+
+            if appState.panes.isEmpty && !appState.railCollapsed {
+                Text("No sessions\n⌘N to start")
+                    .font(T.ui(10))
+                    .foregroundStyle(T.faint)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 20)
             }
 
             List {
@@ -46,7 +60,7 @@ struct RailView: View {
             if !appState.railCollapsed {
                 Divider().overlay(T.borderSoft)
                 HStack(spacing: 6) {
-                    Text("⌘N new · ⌘' jump")
+                    Text("⌘N new · ⌘' jump · ⌘B rail")
                         .font(T.ui(10))
                         .foregroundStyle(T.faint)
                     Spacer()
@@ -57,6 +71,19 @@ struct RailView: View {
         }
         .frame(width: appState.railCollapsed ? T.railCollapsed : T.railWidth)
         .background(T.raised)
+        .animation(.easeOut(duration: 0.15), value: appState.railCollapsed)
+    }
+
+    private func collapseButton(expanded: Bool) -> some View {
+        Button { appState.railCollapsed.toggle() } label: {
+            Image(systemName: expanded ? "chevron.left" : "chevron.right")
+                .font(T.ui(9, .semibold))
+                .foregroundStyle(T.faint)
+                .frame(width: 18, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(expanded ? "Collapse rail (⌘B)" : "Expand rail (⌘B)")
     }
 
     private func rename(_ pane: Pane) {

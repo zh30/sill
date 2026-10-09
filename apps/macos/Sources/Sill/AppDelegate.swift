@@ -182,6 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let view = NSMenuItem()
         view.submenu = NSMenu(title: "View")
         view.submenu?.addItem(withTitle: "Command Palette", action: #selector(palette), keyEquivalent: "P")
+        view.submenu?.addItem(withTitle: "Toggle Rail", action: #selector(toggleRail), keyEquivalent: "b")
         view.submenu?.addItem(withTitle: "Toggle Terminal Mode", action: #selector(terminalMode), keyEquivalent: "")
         view.submenu?.addItem(withTitle: "Jump to Unread Blocked", action: #selector(jumpUnread), keyEquivalent: "'")
         main.addItem(view)
@@ -194,6 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func closePane() { if let p = appState.focused { appState.closePane(p) } }
     @objc private func palette() { appState.showPalette = true }
     @objc private func terminalMode() { appState.terminalMode.toggle() }
+    @objc private func toggleRail() { appState.railCollapsed.toggle() }
     @objc private func jumpUnread() { appState.jumpToOldestBlocked() }
 
     // MARK: - Key commands
