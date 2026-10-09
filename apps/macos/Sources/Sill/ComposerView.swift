@@ -32,11 +32,19 @@ struct ComposerView: View {
             }
             .padding(.horizontal, 4)
             .background(T.surface)
+            Divider().overlay(T.borderSoft)
             HStack {
                 Text("⏎ newline · ⌘⏎ send · esc → terminal")
                     .font(T.ui(10))
                     .foregroundStyle(T.faint)
                 Spacer()
+                // Draft size is the paste-awareness cue — a 4KB paste into
+                // an agent prompt deserves a visible count.
+                if !pane.composerDraft.isEmpty {
+                    Text("\(pane.composerDraft.count) chars")
+                        .font(T.mono(10))
+                        .foregroundStyle(T.faint)
+                }
                 Button("Send") { send() }
                     .keyboardShortcut(.return, modifiers: .command)
                     .buttonStyle(SillButtonStyle(primary: pane.status.isBlocked))

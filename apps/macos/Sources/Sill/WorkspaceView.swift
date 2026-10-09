@@ -98,6 +98,14 @@ struct PaneContainer: View {
                     .background(T.rowHover)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             }
+            // Terminal Mode hides rail + composer entirely; without a mark
+            // here the stripped chrome reads as a bug, not a mode.
+            if appState.terminalMode {
+                Text("terminal mode")
+                    .font(T.ui(9))
+                    .foregroundStyle(T.faint)
+                    .tracking(0.6)
+            }
             ModePicker(mode: $pane.viewMode, locked: pane.altScreen)
             IconButton(symbol: "xmark", size: 20, symbolSize: 9, weight: .medium,
                        help: "Close pane (⌘W)") {
