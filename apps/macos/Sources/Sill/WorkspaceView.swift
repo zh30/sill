@@ -76,11 +76,15 @@ struct PaneContainer: View {
                     .foregroundStyle(T.fg)
                     .lineLimit(1)
             }
+            .layoutPriority(1)
+            // cwd is the secondary cue — it yields width to the title and
+            // truncates from the middle; the full path is on the tooltip.
             Text(pane.cwd.path)
                 .font(T.mono(10))
                 .foregroundStyle(T.faint)
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .help(pane.cwd.path)
             Spacer()
             if pane.altScreen {
                 Text("TUI — raw locked")
@@ -92,15 +96,10 @@ struct PaneContainer: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             }
             ModePicker(mode: $pane.viewMode, locked: pane.altScreen)
-            Button { appState.closePane(pane) } label: {
-                Image(systemName: "xmark")
-                    .font(T.ui(9, .medium))
-                    .foregroundStyle(T.faint)
-                    .frame(width: 20, height: 20)
-                    .contentShape(Rectangle())
+            IconButton(symbol: "xmark", size: 20, symbolSize: 9, weight: .medium,
+                       help: "Close pane (⌘W)") {
+                appState.closePane(pane)
             }
-            .buttonStyle(.plain)
-            .help("Close pane (⌘W)")
         }
         .padding(.horizontal, 12)
         .frame(height: T.stripHeight)
@@ -130,6 +129,9 @@ struct ModePicker: View {
     var body: some View {
         HStack(spacing: 0) {
             segment(.raw, "Raw")
+            Rectangle()
+                .fill(T.border)
+                .frame(width: 1, height: 14)
             segment(.transcript, "Transcript")
         }
         .background(T.raised)

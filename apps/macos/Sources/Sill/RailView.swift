@@ -77,15 +77,10 @@ struct RailView: View {
     }
 
     private func collapseButton(expanded: Bool) -> some View {
-        Button { appState.railCollapsed.toggle() } label: {
-            Image(systemName: expanded ? "chevron.left" : "chevron.right")
-                .font(T.ui(9, .semibold))
-                .foregroundStyle(T.faint)
-                .frame(width: 18, height: 18)
-                .contentShape(Rectangle())
+        IconButton(symbol: expanded ? "chevron.left" : "chevron.right",
+                   help: expanded ? "Collapse rail (⌘B)" : "Expand rail (⌘B)") {
+            appState.railCollapsed.toggle()
         }
-        .buttonStyle(.plain)
-        .help(expanded ? "Collapse rail (⌘B)" : "Expand rail (⌘B)")
     }
 
     private func rename(_ pane: Pane) {
@@ -128,15 +123,10 @@ struct RailRow: View {
                 Spacer(minLength: 4)
             }
             if hovering && !collapsed {
-                Button { appState.closePane(pane) } label: {
-                    Image(systemName: "xmark")
-                        .font(T.ui(8, .semibold))
-                        .foregroundStyle(T.faint)
-                        .frame(width: 16, height: 16)
-                        .contentShape(Rectangle())
+                IconButton(symbol: "xmark", size: 16, symbolSize: 8,
+                           help: "Close pane (⌘W)") {
+                    appState.closePane(pane)
                 }
-                .buttonStyle(.plain)
-                .help("Close pane (⌘W)")
             }
             // Attention markers never yield to the close affordance —
             // a blocked ring that vanishes under the cursor loses signal.

@@ -20,6 +20,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.title = "Sill"
+        // Below this the rail collapse + title strip truncation can't keep
+        // chrome legible — the surface itself needs the room.
+        window.minSize = NSSize(width: 560, height: 400)
         // Dark-first chrome: sheets, alerts, menus and the title bar inherit
         // the app appearance, not the system one.
         window.appearance = NSAppearance(named: .darkAqua)

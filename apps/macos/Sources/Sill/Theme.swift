@@ -126,6 +126,34 @@ struct SillButtonStyle: ButtonStyle {
     }
 }
 
+/// Chrome icon button — the one shape for every ×/chevron/gear in the app:
+/// faint glyph on a hover-lit square. Replaces ad-hoc `Image` buttons so
+/// every affordance gets the same target size and feedback.
+struct IconButton: View {
+    let symbol: String
+    var size: CGFloat = 18
+    var symbolSize: CGFloat = 9
+    var weight: Font.Weight = .semibold
+    var help: String? = nil
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(T.ui(symbolSize, weight))
+                .foregroundStyle(hovering ? T.subtle : T.faint)
+                .frame(width: size, height: size)
+                .background(hovering ? T.rowHover : .clear)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(help ?? "")
+    }
+}
+
 /// Status marker: blocked = accent ring (the signature), done-unread = filled
 /// dot, working = dashed spin ring, error = triangle, idle/unknown = muted.
 struct StatusMark: View {
