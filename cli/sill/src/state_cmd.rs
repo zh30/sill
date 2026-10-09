@@ -48,18 +48,27 @@ pub fn run(pairs: &[String]) -> i32 {
         }
     }
 
-    // pid is required — drop the event without it (FR-008).
+    // A pane key (pane= pair or SILL_PANE env) identifies the pane file.
+    // pid is required only without one — inside a pane shell SILL_PANE
+    // always exists, so hooks don't need a pid (FR-008).
+    let pane_key = kv
+        .get("pane")
+        .cloned()
+        .or_else(|| std::env::var("SILL_PANE").ok().filter(|s| !s.is_empty()));
     let pid = match kv.get("pid").and_then(|p| p.parse::<u32>().ok()) {
         Some(p) => p,
+        None if pane_key.is_some() => 0,
         None => {
-            eprintln!("sill state: dropped event (missing/invalid pid)");
+            eprintln!("sill state: dropped event (missing/invalid pid, no pane key)");
             return 0; // adapters must never fail the hook chain
         }
     };
 
     let agent = kv.get("agent").cloned().unwrap_or_else(|| "unknown".into());
+    // `status=` is canonical; `state=` accepted (same word in OSC 7501).
     let status = kv
         .get("status")
+        .or_else(|| kv.get("state"))
         .cloned()
         .unwrap_or_else(|| "unknown".into());
 
@@ -86,11 +95,7 @@ pub fn run(pairs: &[String]) -> i32 {
 
     // Which pane file the app reads. Hooks run inside the pane's shell, which
     // carries SILL_PANE — that beats pid (pid keys only help manual use).
-    let pane_key = kv
-        .get("pane")
-        .cloned()
-        .or_else(|| std::env::var("SILL_PANE").ok().filter(|s| !s.is_empty()))
-        .unwrap_or_else(|| pid.to_string());
+    let pane_key = pane_key.unwrap_or_else(|| pid.to_string());
 
     let ev = StateEvent {
         ts_ms: SystemTime::now()

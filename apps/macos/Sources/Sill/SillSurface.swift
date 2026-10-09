@@ -73,7 +73,13 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
         env.append("TERM_PROGRAM_VERSION=0.1.0")
         env.append("SILL_PANE=\(pane.id.uuidString)")
         if let shell = pe["SHELL"] { env.append("SHELL=\(shell)") }
-        env.append("PATH=\(pe["PATH"] ?? "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin")")
+        var path = pe["PATH"] ?? "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        // Put the `sill` CLI on the pane's PATH so adapter hooks and
+        // `sill state` resolve inside every spawned shell.
+        if let d = Self.sillCliDir(), !path.split(separator: ":").contains(Substring(d)) {
+            path = d + ":" + path
+        }
+        env.append("PATH=\(path)")
         if let lang = pe["LANG"] { env.append("LANG=\(lang)") }
 
         guard let exe = pane.argv.first, !exe.isEmpty else {
@@ -87,6 +93,29 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
             currentDirectory: pane.cwd.path
         )
         pane.processAlive = true
+    }
+
+    /// Directory containing a `sill` binary: bundled next to the app
+    /// executable, a dev checkout's target/{release,debug}, or $SILL_CLI_DIR.
+    static func sillCliDir() -> String? {
+        let fm = FileManager.default
+        var dirs: [String] = []
+        // bundled: Contents/Resources/bin (Contents/MacOS is case-insensitive —
+        // `sill` would collide with the `Sill` executable)
+        if let res = Bundle.main.resourceURL?.appendingPathComponent("bin").path {
+            dirs.append(res)
+        }
+        if let exe = Bundle.main.executableURL?.deletingLastPathComponent().path {
+            dirs.append(exe)
+            // dev run: .../<repo>/apps/macos/.build/{release,debug}/Sill
+            if let r = exe.range(of: "/apps/macos/.build/") {
+                let root = String(exe[..<r.lowerBound])
+                dirs.append(root + "/target/release")
+                dirs.append(root + "/target/debug")
+            }
+        }
+        if let d = ProcessInfo.processInfo.environment["SILL_CLI_DIR"] { dirs.append(d) }
+        return dirs.first { fm.isExecutableFile(atPath: $0 + "/sill") }
     }
 
     func write(_ data: Data) {

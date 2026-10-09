@@ -8,9 +8,14 @@ BIN="$(swift build -c release --show-bin-path)/Sill"
 ROOT="$(cd ../.. && pwd)"
 APP="$ROOT/dist/Sill.app"
 
+# Ship the `sill` CLI inside the app — panes add it to PATH at spawn.
+cargo build --release -p sill --manifest-path "$ROOT/Cargo.toml" 2>&1 | tail -2
+
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/bin"
 cp "$BIN" "$APP/Contents/MacOS/Sill"
+# `sill` can't sit next to `Sill` (case-insensitive APFS) — it goes in bin/.
+cp "$ROOT/target/release/sill" "$APP/Contents/Resources/bin/sill"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
