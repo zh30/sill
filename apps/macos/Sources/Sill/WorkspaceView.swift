@@ -273,9 +273,9 @@ struct TranscriptRow: View {
                 .foregroundStyle(T.fg.opacity(0.85))
                 .textSelection(.enabled)
         }
-        // One VoiceOver stop per event: "12:03 status awaiting permission"
-        // reads as a sentence, not three disconnected fields.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(ev.ts.formatted(date: .omitted, time: .shortened)) \(kindLabel) \(ev.text)")
+        // One VoiceOver stop per event via .combine (children merge into a
+        // single "12:03 status awaiting…" announcement). .ignore would hide
+        // the selectable Text and strip text-selection from VoiceOver too.
+        .accessibilityElement(children: .combine)
     }
 }

@@ -221,6 +221,13 @@ struct StatusMark: View {
         }
         .frame(width: 14, alignment: .trailing)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(pane.status.railLabel.isEmpty ? "status" : pane.status.railLabel)
+        .accessibilityLabel(a11yLabel)
+    }
+
+    /// Mirror the visual mark, not just the status: a done-unread pane shows
+    /// the filled dot, so VoiceOver must hear the unread part too.
+    private var a11yLabel: String {
+        if pane.status == .done && pane.unread { return "done, unread" }
+        return pane.status.railLabel.isEmpty ? "status" : pane.status.railLabel
     }
 }
