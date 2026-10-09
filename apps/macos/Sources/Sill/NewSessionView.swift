@@ -18,13 +18,20 @@ struct NewSessionView: View {
                 .font(T.ui(15, .semibold))
                 .foregroundStyle(T.fg)
 
-            VStack(spacing: 6) {
-                ForEach(Providers.catalog) { p in
-                    ProviderRow(provider: p) { launch(provider: p) }
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel(text: "PROVIDERS")
+                VStack(spacing: 6) {
+                    ForEach(Providers.catalog) { p in
+                        ProviderRow(provider: p) { launch(provider: p) }
+                    }
                 }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel(text: "CUSTOM COMMAND")
                 HStack(spacing: 10) {
                     GlyphTile(agent: nil, size: 22)
-                    TextField("custom command + args…", text: $customCommand)
+                    TextField("command + args…", text: $customCommand)
                         .textFieldStyle(.plain)
                         .font(T.mono(12))
                         .foregroundStyle(T.fg)
@@ -34,7 +41,12 @@ struct NewSessionView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background(T.raised)
-                .overlay(RoundedRectangle(cornerRadius: T.radiusSm).stroke(T.border, lineWidth: 1))
+                // Focus ring matches the field, not the keyboard: the accent
+                // border is the same signal the blocked ring uses elsewhere.
+                .overlay(
+                    RoundedRectangle(cornerRadius: T.radiusSm)
+                        .stroke(customFocused ? T.accent.opacity(0.6) : T.border, lineWidth: 1)
+                )
                 .clipShape(RoundedRectangle(cornerRadius: T.radiusSm))
             }
 
@@ -49,9 +61,21 @@ struct NewSessionView: View {
 
             if let launchError {
                 // Card-local error + hint — no phantom session (FR-004).
-                Text(launchError)
-                    .font(T.ui(11))
-                    .foregroundStyle(T.error)
+                // Chip-styled so it reads as UI, not a stray red string.
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(T.ui(10))
+                        .foregroundStyle(T.error)
+                    Text(launchError)
+                        .font(T.mono(10))
+                        .foregroundStyle(T.error.opacity(0.9))
+                        .textSelection(.enabled)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(T.error.opacity(0.08))
+                .overlay(RoundedRectangle(cornerRadius: T.radiusSm).stroke(T.error.opacity(0.3), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: T.radiusSm))
             }
 
             HStack {
@@ -138,7 +162,7 @@ struct ProviderRow: View {
             .clipShape(RoundedRectangle(cornerRadius: T.radiusSm))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SillCardStyle())
         .opacity(provider.available ? 1 : 0.5)
         .onHover { hovering = $0 }
     }

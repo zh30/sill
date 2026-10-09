@@ -154,6 +154,31 @@ struct IconButton: View {
     }
 }
 
+/// Card button style for whole-surface tappable rows/cards (Home cards,
+/// provider rows): press dims the whole card. Hover stays with the caller —
+/// ButtonStyle can't observe it, so a style-owned fill would sit on top of
+/// the caller's hover background and kill it.
+struct SillCardStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+/// Small section header label — the "SESSIONS" style, reusable anywhere
+/// chrome needs an uppercase eyebrow (sheets, grouped lists).
+struct SectionLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(T.ui(10, .semibold))
+            .foregroundStyle(T.faint)
+            .tracking(1.2)
+    }
+}
+
 /// Status marker: blocked = accent ring (the signature), done-unread = filled
 /// dot, working = dashed spin ring, error = triangle, idle/unknown = muted.
 struct StatusMark: View {

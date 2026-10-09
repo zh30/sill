@@ -89,7 +89,7 @@ struct HomeCard: View {
             .clipShape(RoundedRectangle(cornerRadius: T.radiusMd))
             .animation(.easeOut(duration: 0.12), value: hovering)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SillCardStyle())
         .onHover { hovering = $0 }
     }
 }
