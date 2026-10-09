@@ -12,7 +12,9 @@ struct ContentView: View {
                 WorkspaceView(appState: appState)
             }
         }
-        .frame(minWidth: 720, minHeight: 480)
+        // Matches AppDelegate's window.contentMinSize — the two minimums
+        // must agree or the window shrinks below what the root view draws.
+        .frame(minWidth: 560, minHeight: 400)
         .background(T.bg)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $appState.showNewSession) {
