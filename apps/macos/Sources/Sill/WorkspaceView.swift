@@ -261,6 +261,9 @@ struct TranscriptRow: View {
                 .font(T.mono(10))
                 .foregroundStyle(T.faint)
                 .frame(width: 62, alignment: .leading)
+                // Minute-grouped rows show an empty label but the time still
+                // reaches VoiceOver through the .combine below.
+                .accessibilityLabel(ev.ts.formatted(date: .omitted, time: .shortened))
             Text(kindLabel)
                 .font(T.mono(9))
                 .foregroundStyle(kindColor)

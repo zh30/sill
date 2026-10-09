@@ -152,7 +152,7 @@ struct RailRow: View {
             Divider()
             Button("Close Pane") { appState.closePane(pane) }
         }
-        .accessibilityLabel("\(pane.title), \(pane.status.railLabel)")
+        .accessibilityLabel("\(pane.title), \(pane.status.railLabel)\(pane.unread ? ", unread" : "")")
         .help(collapsed ? "\(pane.title) — \(pane.status.railLabel)" : "")
     }
 }
