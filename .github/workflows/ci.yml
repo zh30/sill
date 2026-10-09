@@ -21,7 +21,8 @@ jobs:
       - run: cargo test --workspace
       - name: CLI smoke
         run: |
-          BIN=$(find target/debug -maxdepth 1 -name sill -type f | head -1)
+          cargo build -p sill
+          BIN=target/debug/sill
           "$BIN" state agent=demo status=awaiting pid=$$
           "$BIN" import ghostty --path /nonexistent 2>&1 | head -1 || true
 
