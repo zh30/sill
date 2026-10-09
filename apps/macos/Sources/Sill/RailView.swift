@@ -137,9 +137,10 @@ struct RailRow: View {
                 }
                 .buttonStyle(.plain)
                 .help("Close pane (⌘W)")
-            } else {
-                StatusMark(pane: pane)
             }
+            // Attention markers never yield to the close affordance —
+            // a blocked ring that vanishes under the cursor loses signal.
+            StatusMark(pane: pane)
         }
         .frame(height: collapsed ? 44 : 46)
         .padding(.horizontal, collapsed ? 0 : 8)
