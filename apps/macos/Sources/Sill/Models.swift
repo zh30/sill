@@ -84,8 +84,12 @@ final class Pane: Identifiable, ObservableObject {
 /// App-wide workspace state — the single source for chrome + layout save.
 @MainActor
 final class AppState: ObservableObject {
-    @Published var panes: [Pane] = []
-    @Published var focusedId: Pane.ID?
+    /// Fires whenever chrome derived from pane state should refresh
+    /// (window title, dock badge). Set once by the AppDelegate.
+    var onChromeChange: (() -> Void)?
+
+    @Published var panes: [Pane] = [] { didSet { onChromeChange?() } }
+    @Published var focusedId: Pane.ID? { didSet { onChromeChange?() } }
     @Published var railCollapsed = false
     @Published var terminalMode = false
     @Published var showHome = true
@@ -109,6 +113,14 @@ final class AppState: ObservableObject {
         if panes.isEmpty { showHome = true }
     }
 
+    /// Reorder helper for the rail context menu (List .onMove covers drag).
+    func movePane(_ pane: Pane, by delta: Int) {
+        guard let from = panes.firstIndex(where: { $0.id == pane.id }) else { return }
+        let to = max(0, min(from + delta, panes.count - 1))
+        guard to != from else { return }
+        panes.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
+    }
+
     /// `Cmd+'` — jump to the oldest unread blocked pane (FR-005).
     @discardableResult
     func jumpToOldestBlocked() -> Bool {
@@ -120,11 +132,16 @@ final class AppState: ObservableObject {
         return true
     }
 
+    /// Pane-internal @Published changes (status, title) don't fire the
+    /// array's didSet — call sites that change visible state nudge chrome.
+    func refreshChrome() { onChromeChange?() }
+
     func markBlocked(_ pane: Pane, kind: String?) {
         let wasFocused = focusedId == pane.id
         pane.status = .blocked(kind: kind)
         if !wasFocused { pane.unread = true }
         NotificationCenter.default.post(name: .sillPaneBlocked, object: pane)
+        refreshChrome()
     }
 
     /// When a blocked pane is visible and focused, input belongs in the

@@ -25,14 +25,14 @@ struct HomeView: View {
                 HomeCard(
                     title: "New Agent Session",
                     subtitle: "claude · codex · grok — detected on PATH",
-                    glyph: "◐",
+                    agent: "claude",
                     primary: true,
                     action: { appState.showNewSession = true }
                 )
                 HomeCard(
                     title: "Plain Terminal",
                     subtitle: "login shell in any directory",
-                    glyph: "▣",
+                    agent: nil,
                     primary: false,
                     action: { newPlainTerminal() }
                 )
@@ -60,7 +60,7 @@ struct HomeView: View {
 struct HomeCard: View {
     let title: String
     let subtitle: String
-    let glyph: String
+    let agent: String?
     let primary: Bool
     let action: () -> Void
     @State private var hovering = false
@@ -68,9 +68,8 @@ struct HomeCard: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(glyph)
-                    .font(T.ui(18, .medium))
-                    .foregroundStyle(primary ? T.accent : T.subtle)
+                GlyphTile(agent: agent, size: 26,
+                          tinted: primary ? T.accent : T.subtle)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(T.ui(14, .medium))

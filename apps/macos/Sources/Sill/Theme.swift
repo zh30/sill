@@ -46,24 +46,27 @@ extension Color {
     }
 }
 
-/// Provider tile — a small bordered square with the provider glyph.
+/// Provider tile — a small bordered square with the provider's SF glyph.
+/// Shapes mirror the original runes (◐◆▲▣) so the identity survives the
+/// switch to system symbols.
 struct GlyphTile: View {
     let agent: String?
     var size: CGFloat = 22
+    var tinted: Color? = nil
 
-    private var glyph: String {
+    private var symbol: String {
         switch agent {
-        case "claude": return "◐"
-        case "codex": return "◆"
-        case "grok": return "▲"
-        default: return "▣"
+        case "claude": return "circle.lefthalf.filled"
+        case "codex": return "diamond.fill"
+        case "grok": return "triangle.fill"
+        default: return "apple.terminal"
         }
     }
 
     var body: some View {
-        Text(glyph)
-            .font(T.ui(size * 0.55, .medium))
-            .foregroundStyle(T.subtle)
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.52, weight: .medium))
+            .foregroundStyle(tinted ?? T.subtle)
             .frame(width: size, height: size)
             .background(T.raised)
             .overlay(RoundedRectangle(cornerRadius: size * 0.25).stroke(T.border, lineWidth: 1))

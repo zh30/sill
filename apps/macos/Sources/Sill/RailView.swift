@@ -154,6 +154,11 @@ struct RailRow: View {
             }
             Button("Rename…") { onRename(pane) }
             Divider()
+            Button("Move Up") { appState.movePane(pane, by: -1) }
+                .disabled(index == 0)
+            Button("Move Down") { appState.movePane(pane, by: 1) }
+                .disabled(index == appState.panes.count - 1)
+            Divider()
             Button("Close Pane") { appState.closePane(pane) }
         }
         .accessibilityLabel("\(pane.title), \(pane.status.railLabel)")

@@ -56,6 +56,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forName: .sillNewTerminal, object: nil, queue: .main
         ) { [weak self] _ in self?.newPlainTerminal() }
 
+        // Window title + dock badge track the focused pane and blocked count.
+        appState.onChromeChange = { [weak self] in self?.updateChrome() }
+
         // `sill state` fallback path: hooks write pane-<id>.json files under
         // ~/.config/sill/state/; a light poll applies them to the rail.
         statePollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
@@ -105,7 +108,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statePollTimer: Timer?
 
+    /// Window title mirrors the focused pane; the dock badge counts panes
+    /// awaiting input — both cheap enough to also run on the 1s poll so
+    /// drift from @Published pane-internal changes gets caught.
+    private func updateChrome() {
+        window?.title = appState.focused.map { "\($0.title) — Sill" } ?? "Sill"
+        let blocked = appState.panes.count { $0.status.isBlocked }
+        NSApp.dockTile.badgeLabel = blocked > 0 ? "\(blocked)" : nil
+    }
+
     private func pollStateFiles() {
+        updateChrome()
         let dir = LayoutStore.configDir.appendingPathComponent("state")
         for pane in appState.panes {
             let url = dir.appendingPathComponent("pane-\(pane.id.uuidString).json")
