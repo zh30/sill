@@ -105,8 +105,10 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
         if let res = Bundle.main.resourceURL?.appendingPathComponent("bin").path {
             dirs.append(res)
         }
+        // NOTE: the executable dir itself is deliberately NOT a candidate —
+        // on case-insensitive APFS `<dir>/sill` resolves to the `Sill` GUI
+        // binary, so `sill state` would relaunch the app instead of the CLI.
         if let exe = Bundle.main.executableURL?.deletingLastPathComponent().path {
-            dirs.append(exe)
             // dev run: .../<repo>/apps/macos/.build/{release,debug}/Sill
             if let r = exe.range(of: "/apps/macos/.build/") {
                 let root = String(exe[..<r.lowerBound])
@@ -115,7 +117,15 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
             }
         }
         if let d = ProcessInfo.processInfo.environment["SILL_CLI_DIR"] { dirs.append(d) }
-        return dirs.first { fm.isExecutableFile(atPath: $0 + "/sill") }
+        // Guard anyway: never accept the app's own executable as the CLI.
+        // Compared lowercased — APFS ignores case, so `.../sill` can resolve
+        // to `.../Sill` even though the path strings differ.
+        let guiPath = Bundle.main.executableURL?.standardizedFileURL.path.lowercased()
+        return dirs.first { dir in
+            let cand = dir + "/sill"
+            guard fm.isExecutableFile(atPath: cand) else { return false }
+            return URL(fileURLWithPath: cand).standardizedFileURL.path.lowercased() != guiPath
+        }
     }
 
     func write(_ data: Data) {
