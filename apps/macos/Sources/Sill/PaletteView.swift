@@ -82,34 +82,56 @@ struct PaletteView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
             } else {
-                List(Array(filtered.enumerated()), id: \.element.id) { i, cmd in
-                    HStack(spacing: 10) {
-                        Image(systemName: cmd.icon)
-                            .font(T.ui(11))
-                            .foregroundStyle(i == selection ? T.fg : T.faint)
-                            .frame(width: 16, alignment: .center)
-                        Text(cmd.title)
-                            .font(T.ui(12))
-                            .foregroundStyle(i == selection ? T.fg : T.fg.opacity(0.85))
-                        Spacer()
-                        if let sc = cmd.shortcut {
-                            Text(sc)
-                                .font(T.mono(10))
-                                .foregroundStyle(T.faint)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(filtered.enumerated()), id: \.element.id) { i, cmd in
+                                HStack(spacing: 10) {
+                                    Image(systemName: cmd.icon)
+                                        .font(T.ui(11))
+                                        .foregroundStyle(i == selection ? T.fg : T.faint)
+                                        .frame(width: 16, alignment: .center)
+                                    Text(cmd.title)
+                                        .font(T.ui(12))
+                                        .foregroundStyle(i == selection ? T.fg : T.fg.opacity(0.85))
+                                    Spacer()
+                                    if let sc = cmd.shortcut {
+                                        Text(sc)
+                                            .font(T.mono(10))
+                                            .foregroundStyle(T.faint)
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(i == selection ? T.rowHover : Color.clear)
+                                // Selection reads as a flat fill plus an
+                                // accent leading edge — the same mark the
+                                // rail uses for attention.
+                                .overlay(alignment: .leading) {
+                                    Rectangle()
+                                        .fill(i == selection ? T.accent : .clear)
+                                        .frame(width: 2)
+                                }
+                                .contentShape(Rectangle())
+                                .id(i)
+                                .onTapGesture { selection = i; runSelection() }
+                                .onHover { h in if h { selection = i } }
+                            }
                         }
                     }
-                    .padding(.vertical, 3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRowInsets(EdgeInsets(top: 2, leading: 10, bottom: 2, trailing: 12))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(i == selection ? T.rowHover : Color.clear)
-                    .contentShape(Rectangle())
-                    .onTapGesture { selection = i; runSelection() }
-                    .onHover { h in if h { selection = i } }
+                    .frame(height: min(CGFloat(filtered.count) * 33 + 8, 280))
+                    .onChange(of: selection) { _, sel in
+                        withAnimation(nil) { proxy.scrollTo(sel) }
+                    }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .frame(height: min(CGFloat(filtered.count) * 30 + 8, 280))
+                Divider().overlay(T.borderSoft)
+                Text("↑↓ select · ↵ run · esc dismiss")
+                    .font(T.ui(10))
+                    .foregroundStyle(T.faint)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
             }
         }
         .frame(width: 400)
