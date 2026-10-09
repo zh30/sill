@@ -72,7 +72,6 @@ fn bench_cat_ascii(path: &PathBuf) -> CaseResult {
             note: Some(format!("cannot create bench file: {e}")),
         };
     }
-    let cat_cmd = format!("cat {}", path.display());
     let mut cmd = if cfg!(target_os = "macos") {
         // BSD script: `script file command args...` — command and args are
         // separate argv entries.
@@ -80,11 +79,15 @@ fn bench_cat_ascii(path: &PathBuf) -> CaseResult {
         c.arg("-q").arg("/dev/null").arg("cat").arg(path);
         c
     } else {
-        // util-linux script: `script -qec "cmd" file`.
+        // util-linux script: `script -qec "cmd" file` — the command is a
+        // shell string, so the fixture path must be quoted (XDG paths can
+        // carry shell metacharacters).
         let mut c = Command::new("script");
-        c.args(["-qec", &cat_cmd, "/dev/null"]);
+        c.args(["-qec", &format!("cat {}", shell_quote(path)), "/dev/null"]);
         c
     };
+    // The PTY stream is the bench — don't buffer 150 MB of output, discard it.
+    cmd.stdout(std::process::Stdio::null());
     let t = Instant::now();
     match cmd.output() {
         Ok(out) if out.status.success() => {
@@ -116,6 +119,10 @@ fn bench_cat_ascii(path: &PathBuf) -> CaseResult {
             note: Some(format!("cannot run `script`: {e}")),
         },
     }
+}
+
+fn shell_quote(path: &std::path::Path) -> String {
+    format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
 }
 
 fn read_utime_ticks(pid: u32) -> Option<f64> {

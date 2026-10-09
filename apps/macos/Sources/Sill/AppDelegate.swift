@@ -35,20 +35,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forName: .sillPaneBlocked, object: nil, queue: .main
         ) { [weak self] note in
             guard let pane = note.object as? Pane else { return }
-            // Ring + unread handled by the model. Notification only when the
-            // window isn't visible; then focus jumps to the composer.
+            // Ring + unread handled by the model. A blocked pane that isn't
+            // focused shows its rail ring only — Cmd+' is the jump — so the
+            // composer-focus event only fires for the focused pane.
             if self?.window.isKeyWindow != true {
                 if let p = pane.status.isBlocked ? pane : nil {
                     Notifier.post(title: "Sill — \(p.title)",
                                   body: p.status.railLabel)
                 }
-            } else {
+            } else if self?.appState.focusedId == pane.id {
                 NotificationCenter.default.post(name: .sillFocusComposer, object: pane)
             }
         }
         newTerminalObserver = NotificationCenter.default.addObserver(
             forName: .sillNewTerminal, object: nil, queue: .main
         ) { [weak self] _ in self?.newPlainTerminal() }
+
+        // `sill state` fallback path: hooks write pane-<id>.json files under
+        // ~/.config/sill/state/; a light poll applies them to the rail.
+        statePollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
+            [weak self] _ in self?.pollStateFiles()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -75,12 +82,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // resume flags were baked in at save time. Failure → error strip
             // on the pane, session id kept.
             pane.viewMode = ViewMode(rawValue: saved.viewMode) ?? .raw
+            pane.composerDraft = saved.composerDraft
             appState.addPane(pane)
             pane.surface = SwiftTermSurface(pane: pane, appState: appState)
             try? pane.surface?.spawn()
         }
+        // Restore the saved focus; addPane's last-wins default otherwise.
+        if let savedFocus = layout.focused,
+           let match = appState.panes.first(where: { $0.id.uuidString == savedFocus }) {
+            appState.focusedId = match.id
+        }
         appState.terminalMode = layout.terminalMode
         appState.showHome = appState.panes.isEmpty
+    }
+
+    // MARK: - sill state file watch (adapter fallback, FR-008)
+
+    private var statePollTimer: Timer?
+
+    private func pollStateFiles() {
+        let dir = LayoutStore.configDir.appendingPathComponent("state")
+        for pane in appState.panes {
+            let url = dir.appendingPathComponent("pane-\(pane.id.uuidString).json")
+            guard let data = try? Data(contentsOf: url),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let ts = (obj["ts_ms"] as? NSNumber)?.doubleValue, ts > pane.lastHookTs else { continue }
+            pane.lastHookTs = ts
+            applyHookEvent(pane: pane, obj: obj)
+        }
+    }
+
+    private func applyHookEvent(pane: Pane, obj: [String: Any]) {
+        if let session = obj["session"] as? String, !session.isEmpty {
+            pane.sessionId = session
+        }
+        let agent = obj["agent"] as? String
+        let state = ((obj["record"] as? [String: Any])?["state"] as? String) ?? (obj["state"] as? String)
+        let kind = obj["kind"] as? String
+        let msg = obj["msg"] as? String
+        switch state {
+        case "blocked":
+            pane.record(.status, "awaiting\(kind.map { " · \($0)" } ?? "")\(agent.map { " · \($0)" } ?? "")")
+            appState.markBlocked(pane, kind: kind)
+        case "error": pane.status = .error
+        case "done": pane.status = .done; pane.unread = pane.unread || appState.focusedId != pane.id
+        case "working": pane.status = .working
+        case "idle": pane.status = .idle
+        case "clear": pane.status = .idle
+        default: return // null/unknown = liveness only
+        }
+        if let msg, !msg.isEmpty { pane.record(.status, msg) }
     }
 
     private func newPlainTerminal() {
@@ -110,6 +161,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         file.submenu?.addItem(.separator())
         file.submenu?.addItem(withTitle: "Close Pane", action: #selector(closePane), keyEquivalent: "w")
         main.addItem(file)
+
+        // Standard Edit menu — without it Cmd+V/C/X/A are dead app-wide.
+        let edit = NSMenuItem()
+        edit.submenu = NSMenu(title: "Edit")
+        edit.submenu?.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.submenu?.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.submenu?.addItem(.separator())
+        edit.submenu?.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.submenu?.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.submenu?.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.submenu?.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        main.addItem(edit)
 
         let view = NSMenuItem()
         view.submenu = NSMenu(title: "View")

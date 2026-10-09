@@ -15,6 +15,7 @@ enum LayoutStore {
         var session: String?
         var viewMode = "raw"
         var railOrder = 0
+        var composerDraft = ""
     }
 
     static var configDir: URL {
@@ -40,7 +41,9 @@ enum LayoutStore {
             out += "id = \"\(p.id.uuidString)\"\n"
             out += "title = \(tomlString(p.title))\n"
             out += "cwd = \(tomlString(p.cwd.path))\n"
-            out += "launch = [\(p.argv.map(tomlString).joined(separator: ", "))]\n"
+            // Agent panes resume through the official CLI flag — `launch` is
+            // the resume command, not the original argv (FR-011).
+            out += "launch = [\(resumeArgv(agent: p.agent, session: p.sessionId, fallback: p.argv).map(tomlString).joined(separator: ", "))]\n"
             if let a = p.agent { out += "agent = \(tomlString(a))\n" }
             if let s = p.sessionId { out += "session = \(tomlString(s))\n" }
             out += "view_mode = \"\(p.viewMode.rawValue)\"\n"
@@ -53,6 +56,21 @@ enum LayoutStore {
         }
         try? FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
         try? out.write(to: lastLayoutURL, atomically: true, encoding: .utf8)
+        // Drafts may hold unsent secrets — keep layout files user-only.
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: configDir.path)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: lastLayoutURL.path)
+    }
+
+    /// Official resume argv per provider (mirrors sill-core
+    /// `agent_resume_argv`). Unknown agents keep the pane's own launch.
+    private static func resumeArgv(agent: String?, session: String?, fallback: [String]) -> [String] {
+        guard let a = agent, let s = session, !s.isEmpty else { return fallback }
+        switch a {
+        case "claude": return ["claude", "--resume", s]
+        case "codex": return ["codex", "resume", s]
+        case "grok": return ["grok", "--resume", s]
+        default: return fallback
+        }
     }
 
     private static func statusWire(_ s: PaneStatus) -> String {
@@ -67,7 +85,23 @@ enum LayoutStore {
     }
 
     private static func tomlString(_ s: String) -> String {
-        "\"\(s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\""
+        var out = "\""
+        for c in s {
+            switch c {
+            case "\\": out += "\\\\"
+            case "\"": out += "\\\""
+            case "\n": out += "\\n"
+            case "\r": out += "\\r"
+            case "\t": out += "\\t"
+            default:
+                if c.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7F }) {
+                    for u in c.unicodeScalars { out += String(format: "\\u%04X", u.value) }
+                } else {
+                    out.append(c)
+                }
+            }
+        }
+        return out + "\""
     }
 
     // MARK: - read
@@ -123,6 +157,7 @@ enum LayoutStore {
             case "session": current!.session = val
             case "view_mode": current!.viewMode = val
             case "rail_order": current!.railOrder = Int(rawVal) ?? 0
+            case "composer_draft": current!.composerDraft = val
             default: break
             }
         }
@@ -133,12 +168,36 @@ enum LayoutStore {
 
     private static func unquote(_ s: String) -> String {
         var v = s
-        if v.hasPrefix("\""), v.hasSuffix("\""), v.count >= 2 {
-            v = String(v.dropFirst().dropLast())
-            v = v.replacingOccurrences(of: "\\\"", with: "\"")
-                .replacingOccurrences(of: "\\\\", with: "\\")
+        guard v.hasPrefix("\""), v.hasSuffix("\""), v.count >= 2 else { return v }
+        v = String(v.dropFirst().dropLast())
+        var out = ""
+        var i = v.startIndex
+        while i < v.endIndex {
+            if v[i] == "\\", let next = v.index(i, offsetBy: 1, limitedBy: v.endIndex), next < v.endIndex {
+                switch v[next] {
+                case "n": out += "\n"
+                case "r": out += "\r"
+                case "t": out += "\t"
+                case "\\": out += "\\"
+                case "\"": out += "\""
+                case "u":
+                    let h0 = v.index(i, offsetBy: 2)
+                    let h1 = v.index(i, offsetBy: 6, limitedBy: v.endIndex) ?? v.endIndex
+                    if v.distance(from: h0, to: h1) == 4, let cp = UInt32(v[h0..<h1], radix: 16), let sc = Unicode.Scalar(cp) {
+                        out += String(Character(sc))
+                        i = h1
+                        continue
+                    }
+                    out += "\\u"
+                default: out += String(v[next])
+                }
+                i = v.index(next, offsetBy: 1)
+            } else {
+                out.append(v[i])
+                i = v.index(after: i)
+            }
         }
-        return v
+        return out
     }
 
     private static func parseStringArray(_ s: String) -> [String] {

@@ -129,10 +129,10 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
         case 9, 99, 777:
             let body = String(payload.split(separator: ";").last ?? "")
             if !body.isEmpty {
+                // OSC notify lands in the transcript only. System
+                // notifications for remote writers are default-off (FR-013);
+                // a local-only opt-in lands with config.
                 pane.record(.notify, body)
-                // Remote notify is default-off; local notify only when the
-                // window isn't visible (FR-009 row 5).
-                    Notifier.post(title: pane.title, body: body)
             }
         case 8:
             if let uri = payload.split(separator: ";").last, !uri.isEmpty {
@@ -152,11 +152,37 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
 
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {
         guard let dir = directory, !dir.isEmpty else { return }
+        let path = Self.decodeFileURL(dir)
         Task { @MainActor in
-            self.pane.cwd = URL(fileURLWithPath: dir)
-            self.pane.cwdSubline = URL(fileURLWithPath: dir).lastPathComponent
-            self.pane.record(.cwd, dir)
+            self.pane.cwd = URL(fileURLWithPath: path)
+            self.pane.cwdSubline = URL(fileURLWithPath: path).lastPathComponent
+            self.pane.record(.cwd, path)
         }
+    }
+
+    /// OSC 7 arrives as `file://host/path` — strip scheme+host and
+    /// percent-decode before it ever becomes a filesystem path.
+    static func decodeFileURL(_ raw: String) -> String {
+        guard raw.hasPrefix("file://") else { return raw }
+        let rest = String(raw.dropFirst(7))
+        guard let slash = rest.firstIndex(of: "/") else { return raw }
+        var path = String(rest[slash...])
+        // percent-decode (utf8-safe enough for paths)
+        var out = ""
+        var i = path.startIndex
+        while i < path.endIndex {
+            if path[i] == "%",
+               let h = path.index(i, offsetBy: 3, limitedBy: path.endIndex), h <= path.endIndex,
+               let byte = UInt8(path[path.index(after: i)..<h], radix: 16) {
+                out.append(Character(Unicode.Scalar(byte)))
+                i = h
+            } else {
+                out.append(path[i])
+                i = path.index(after: i)
+            }
+        }
+        path = out
+        return path
     }
 
     func programStatusChanged(source: TerminalView, records: [TerminalProgramStatus]) {
@@ -204,7 +230,10 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         Task { @MainActor in
             self.pane.processAlive = false
-            self.pane.record(.status, "process exited\(exitCode.map { " (\($0))" } ?? "")")
+            let note = "process exited\(exitCode.map { " (\($0))" } ?? "")"
+            self.pane.exited = true
+            self.pane.exitNote = note
+            self.pane.record(.status, note)
             if self.pane.status == .unknown { self.pane.status = .idle }
         }
     }
@@ -216,13 +245,10 @@ final class SwiftTermSurface: NSObject, SillSurface, LocalProcessTerminalViewDel
         }
     }
 
-    /// OSC 8 links: remote opens go through a confirm (FR-009).
+    /// OSC 8 links: every open is confirmed — a remote writer could emit
+    /// `file:` or any other scheme (FR-009, FR-013).
     func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
         guard let url = URL(string: link) else { return }
-        if let scheme = url.scheme, scheme.hasPrefix("file") {
-            NSWorkspace.shared.open(url)
-            return
-        }
         Task { @MainActor in
             let alert = NSAlert()
             alert.messageText = "Open link?"

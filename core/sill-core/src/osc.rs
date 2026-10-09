@@ -85,6 +85,9 @@ pub enum ProgressKind {
 pub struct OscScanner {
     buf: Vec<u8>,
     in_seq: bool,
+    /// A feed ended on a bare `ESC` — the next feed's first byte decides
+    /// whether it was an `ESC ]` introducer split across chunks.
+    pending_esc: bool,
     /// Guard against unbounded sequences (binary dumps, hostile streams).
     max_seq: usize,
 }
@@ -102,6 +105,7 @@ impl OscScanner {
         Self {
             buf: Vec::with_capacity(512),
             in_seq: false,
+            pending_esc: false,
             max_seq: Self::MAX_SEQ,
         }
     }
@@ -110,14 +114,34 @@ impl OscScanner {
     pub fn feed(&mut self, data: &[u8]) -> Vec<OscEvent> {
         let mut out = Vec::new();
         let mut i = 0;
+        // A previous chunk ended on bare ESC: ']' now means an introducer.
+        if self.pending_esc {
+            self.pending_esc = false;
+            if data.first() == Some(&b']') {
+                self.in_seq = true;
+                self.buf.clear();
+                i = 1;
+            }
+        }
         while i < data.len() {
             if !self.in_seq {
                 // Look for ESC ] introducer (also accept 0x9d C1 OSC, which
                 // terminals translate to ESC ] before this layer anyway).
-                if data[i] == 0x1b && i + 1 < data.len() && data[i + 1] == b']' {
-                    self.in_seq = true;
-                    self.buf.clear();
-                    i += 2;
+                if data[i] == 0x1b {
+                    if i + 1 < data.len() {
+                        if data[i + 1] == b']' {
+                            self.in_seq = true;
+                            self.buf.clear();
+                            i += 2;
+                            continue;
+                        }
+                        // ESC + anything else: stray — drop it.
+                        i += 1;
+                        continue;
+                    }
+                    // Trailing ESC: maybe half an introducer — hold it.
+                    self.pending_esc = true;
+                    i += 1;
                     continue;
                 }
                 if data[i] == 0x9d {
@@ -126,7 +150,6 @@ impl OscScanner {
                     i += 1;
                     continue;
                 }
-                // Possible split ESC — handled next chunk via lookahead tail.
                 i += 1;
             } else {
                 let b = data[i];
@@ -150,10 +173,20 @@ impl OscScanner {
                         // new sequence start.
                     }
                 } else {
-                    // A pending split ST: buffer tail is ESC and this byte is '\'.
-                    if self.buf.last() == Some(&0x1b) && b == b'\\' {
+                    // A pending split ESC inside a sequence: '\' ends it (ST),
+                    // anything else abandons it — ']' starts a fresh sequence.
+                    if self.buf.last() == Some(&0x1b) {
                         self.buf.pop();
-                        self.finish(&mut out);
+                        if b == b'\\' {
+                            self.finish(&mut out);
+                            i += 1;
+                            continue;
+                        }
+                        self.abandon();
+                        if b == b']' {
+                            self.in_seq = true;
+                            self.buf.clear();
+                        }
                         i += 1;
                         continue;
                     }
@@ -165,10 +198,6 @@ impl OscScanner {
                 }
             }
         }
-        // A lone trailing ESC outside a sequence might be half of an OSC/ST
-        // introducer — we don't buffer it; OSC sequences always begin ESC ]
-        // inside one feed in practice, and a split 'ESC'|']' is re-found when
-        // the next chunk arrives because we never consumed the ESC.
         out
     }
 
@@ -447,6 +476,47 @@ mod tests {
             }
             _ => panic!(),
         }
+    }
+
+    #[test]
+    fn split_esc_bracket_across_feeds() {
+        // "ESC" | "]7501;…" — the introducer itself split across chunks.
+        let mut s = OscScanner::new();
+        assert!(s.feed(b"prompt \x1b").is_empty());
+        let evs = s.feed(b"]7501;state=blocked\x07");
+        assert_eq!(evs.len(), 1);
+        assert!(matches!(
+            evs[0],
+            OscEvent::Status {
+                state: StateKind::Blocked,
+                ..
+            }
+        ));
+        // …and a trailing ESC that was NOT an introducer must not eat input.
+        let mut s2 = OscScanner::new();
+        assert!(s2.feed(b"abc\x1b").is_empty());
+        assert!(s2.feed(b"[31m").is_empty());
+    }
+
+    #[test]
+    fn mid_seq_esc_then_new_sequence() {
+        // "ESC ]7501;sta ESC ]7501;state=idle BEL" — the corrupt first
+        // sequence abandons; the second still parses.
+        let mut s = OscScanner::new();
+        let evs = s.feed(b"\x1b]7501;sta\x1b]7501;state=idle\x07");
+        assert_eq!(evs.len(), 1);
+        assert!(matches!(
+            evs[0],
+            OscEvent::Status {
+                state: StateKind::Idle,
+                ..
+            }
+        ));
+        // Same but with the second ESC as the chunk tail.
+        let mut s2 = OscScanner::new();
+        assert!(s2.feed(b"\x1b]7501;sta\x1b").is_empty());
+        let evs2 = s2.feed(b"]7501;state=idle\x07");
+        assert_eq!(evs2.len(), 1);
     }
 
     #[test]

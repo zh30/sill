@@ -50,7 +50,12 @@ final class Pane: Identifiable, ObservableObject {
     @Published var transcript: [TranscriptEvent] = []
     @Published var processAlive = false
     @Published var spawnError: String?
+    /// Shell exited — surface keeps scrollback but the Retry strip shows.
+    @Published var exited = false
+    @Published var exitNote: String?
     @Published var composerDraft = ""
+    /// Last applied `sill state` event timestamp (dedupe for the file watch).
+    var lastHookTs: Double = 0
     var surface: (any SillSurface)?
 
     struct TranscriptEvent: Identifiable {

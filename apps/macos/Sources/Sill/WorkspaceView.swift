@@ -13,7 +13,11 @@ struct WorkspaceView: View {
                 Divider()
             }
             if let pane = appState.focused {
+                // .id forces a fresh view tree per pane — without it SwiftUI
+                // reuses the mounted NSViewRepresentables and the surface /
+                // composer stay bound to the previously focused pane.
                 PaneContainer(pane: pane, appState: appState)
+                    .id(pane.id)
             } else {
                 ContentUnavailableView("No session focused",
                                        systemImage: "terminal",
@@ -50,10 +54,13 @@ struct PaneContainer: View {
     private var surfaceBody: some View {
         if pane.viewMode == .transcript && !pane.altScreen {
             TranscriptView(pane: pane)
+        } else if let err = pane.spawnError {
+            // Failed launch beats the (empty) surface — keep Retry visible.
+            errorStrip(err)
         } else if let surface = pane.surface {
             SurfaceNSView(surface: surface)
-        } else if let err = pane.spawnError {
-            errorStrip(err)
+        } else if pane.exited {
+            errorStrip(pane.exitNote ?? "process exited")
         } else {
             ProgressView().controlSize(.small).padding()
         }
@@ -87,6 +94,8 @@ struct PaneContainer: View {
             Text(msg).font(.system(size: 12)).foregroundStyle(.secondary)
             Button("Retry") {
                 pane.spawnError = nil
+                pane.exited = false
+                pane.exitNote = nil
                 pane.surface = SwiftTermSurface(pane: pane, appState: appState)
                 try? pane.surface?.spawn()
             }

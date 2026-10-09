@@ -28,6 +28,9 @@ struct StateEvent {
     /// Effective sill state after mapping (`awaiting` → `blocked`), or null
     /// when the word maps to `unknown` (liveness only).
     state: Option<String>,
+    /// Pane key for the file the app watches (`pane-<key>.json`): the
+    /// `pane=` pair, or `SILL_PANE` env (set on every spawned shell), else pid.
+    pane: String,
     record: Option<StatusRecord>,
 }
 
@@ -81,6 +84,14 @@ pub fn run(pairs: &[String]) -> i32 {
         source: Some(format!("adapter:{agent}")),
     });
 
+    // Which pane file the app reads. Hooks run inside the pane's shell, which
+    // carries SILL_PANE — that beats pid (pid keys only help manual use).
+    let pane_key = kv
+        .get("pane")
+        .cloned()
+        .or_else(|| std::env::var("SILL_PANE").ok().filter(|s| !s.is_empty()))
+        .unwrap_or_else(|| pid.to_string());
+
     let ev = StateEvent {
         ts_ms: SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -93,6 +104,7 @@ pub fn run(pairs: &[String]) -> i32 {
         kind,
         msg: kv.get("msg").cloned(),
         state: record.as_ref().map(|r| r.state.as_str().to_string()),
+        pane: pane_key.clone(),
         record,
     };
 
@@ -122,13 +134,19 @@ pub fn run(pairs: &[String]) -> i32 {
         }
     }
     // Latest-per-pane file the app watches.
-    let pane_path = dir.join(format!("pane-{pid}.json"));
+    let pane_path = dir.join(format!("pane-{}.json", sanitize_file_key(&pane_key)));
     if let Err(e) = fs::write(
         &pane_path,
         serde_json::to_string_pretty(&ev).unwrap_or_default(),
     ) {
         eprintln!("sill state: write {}: {e}", pane_path.display());
         ok = false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o700));
+        let _ = fs::set_permissions(&pane_path, fs::Permissions::from_mode(0o600));
     }
 
     if ok {
@@ -139,4 +157,17 @@ pub fn run(pairs: &[String]) -> i32 {
         );
     }
     0 // never a nonzero exit — the hook chain must not break
+}
+
+/// Pane keys become file names — strip anything pathy.
+fn sanitize_file_key(key: &str) -> String {
+    key.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }
