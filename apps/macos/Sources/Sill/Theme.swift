@@ -151,6 +151,7 @@ struct IconButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .help(help ?? "")
+        .accessibilityLabel(help ?? symbol)
     }
 }
 
@@ -219,5 +220,7 @@ struct StatusMark: View {
             }
         }
         .frame(width: 14, alignment: .trailing)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(pane.status.railLabel.isEmpty ? "status" : pane.status.railLabel)
     }
 }

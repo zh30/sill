@@ -117,6 +117,9 @@ struct PaletteView: View {
                                 .id(i)
                                 .onTapGesture { selection = i; runSelection() }
                                 .onHover { h in if h { selection = i } }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(cmd.shortcut.map { "\(cmd.title), \($0)" } ?? cmd.title)
+                                .accessibilityAddTraits(i == selection ? .isSelected : [])
                             }
                         }
                     }
