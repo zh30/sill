@@ -118,7 +118,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func pollStateFiles() {
-        updateChrome()
         let dir = LayoutStore.configDir.appendingPathComponent("state")
         for pane in appState.panes {
             let url = dir.appendingPathComponent("pane-\(pane.id.uuidString).json")
@@ -128,6 +127,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pane.lastHookTs = ts
             applyHookEvent(pane: pane, obj: obj)
         }
+        // After applying this tick's events so a cleared block clears the
+        // badge in the same tick rather than lingering one poll behind.
+        updateChrome()
     }
 
     private func applyHookEvent(pane: Pane, obj: [String: Any]) {
@@ -150,6 +152,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         default: return // null/unknown = liveness only
         }
         if let msg, !msg.isEmpty { pane.record(.status, msg) }
+        appState.refreshChrome()
     }
 
     private func newPlainTerminal() {
