@@ -8,6 +8,7 @@ mod state_cmd;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+#[cfg(target_os = "macos")]
 use std::process::Command;
 
 #[derive(Parser)]
