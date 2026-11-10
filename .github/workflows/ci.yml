@@ -4,12 +4,15 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   rust:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # macOS rust jobs removed 2026-11-10 to cut Actions cost; Linux covers
+        # fmt/clippy/test and the CLI smoke.
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +30,10 @@ jobs:
           "$BIN" import ghostty --path /nonexistent 2>&1 | head -1 || true
 
   swift-macos:
+    # apps/macos is a Swift package and needs a macOS/Xcode runner. That
+    # runner is expensive, so this job runs only when manually dispatched
+    # (2026-11-10 cost cut).
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
